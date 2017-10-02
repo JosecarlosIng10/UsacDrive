@@ -1,23 +1,44 @@
 package com.example.equipo.usacdrive;
 
+import android.app.Activity;
+import android.content.ActivityNotFoundException;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Environment;
+import android.os.StrictMode;
+import android.provider.ContactsContract;
+import android.provider.MediaStore;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.DragEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 
 import com.example.equipo.usacdrive.atv.model.TreeNode;
 import com.example.equipo.usacdrive.atv.view.AndroidTreeView;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 
 import okhttp3.FormBody;
 import okhttp3.OkHttpClient;
@@ -28,10 +49,18 @@ import okhttp3.Response;
 import static android.R.attr.data;
 
 public class Perfil extends AppCompatActivity {
-    EditText et6,et5;
-    Button btguardar;
+
+    EditText et6, et5;
+    Button btguardar, btsubir,btmodificar, bteliminar;
+    //ImageView imgview;
+
+    private static final int READ_REQUEST_CODE = 42;
+    int SELECCIONAR_DIRECTORIO_ORIGEN = 1;
+    boolean estadoBooleanOrigen=false;
 
     final Context context = this;
+    private int VALOR_RETORNO = 1;
+
 
 
     @Override
@@ -40,55 +69,308 @@ public class Perfil extends AppCompatActivity {
         setContentView(R.layout.activity_perfil);
 
         btguardar = (Button) findViewById(R.id.button5);
+        btsubir = (Button) findViewById(R.id.button6);
+        btmodificar=(Button) findViewById(R.id.button7);
+        bteliminar=(Button) findViewById(R.id.button8);
+        et6 = (EditText) findViewById(R.id.editText6);
+        et5 = (EditText) findViewById(R.id.editText5);
+        //imgview = (ImageView) findViewById(R.id.imageView3);
+
         Bundle parametros = this.getIntent().getExtras();
         final String datos = parametros.getString("user");
 
         btguardar.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                et6 = (EditText) findViewById(R.id.editText6);
-                et5 = (EditText) findViewById(R.id.editText5);
+
+
 
                 String nombre = et6.getText().toString();
                 String padre = et5.getText().toString();
 
 
-                new Perfil.FeedTask().execute(nombre,datos, padre);
+                new Perfil.FeedTask().execute(nombre, datos, padre);
+
             }
+        });
+        btmodificar.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                FeedTask2 fed = new FeedTask2();
+                String nombre = et5.getText().toString();
+                String nuevo = et6.getText().toString();
+
+                fed.doInBackground(datos,nombre,nuevo);
+
+
+            }
+        });
+
+        bteliminar.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                FeedTask3 fed = new FeedTask3();
+                String nombre = et5.getText().toString();
+
+                fed.doInBackground(datos,nombre);
+
+            }
+        });
+        btsubir.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intentOrigen = new Intent(Intent.ACTION_GET_CONTENT);
+                intentOrigen.setType("image/*");
+                startActivityForResult(intentOrigen, SELECCIONAR_DIRECTORIO_ORIGEN);
+                estadoBooleanOrigen = true;
+            }
+
+
         });
 
 
 
-        //Root
-        /*
-
-        //Parent
-        MyHolder.IconTreeItem nodeItem = new MyHolder.IconTreeItem(R.drawable.ic_arrow_drop_down, "Carpetas");
-        TreeNode parent = new TreeNode(nodeItem).setViewHolder(new MyHolder(getApplicationContext(), true, MyHolder.DEFAULT, MyHolder.DEFAULT));
-
-        MyHolder.IconTreeItem nodeItem1 = new MyHolder.IconTreeItem(R.drawable.ic_arrow_drop_down, "Carpetas2");
-        TreeNode parent1 = new TreeNode(nodeItem1).setViewHolder(new MyHolder(getApplicationContext(), true, MyHolder.DEFAULT, MyHolder.DEFAULT));
-
-        //Child
-        MyHolder.IconTreeItem childItem = new MyHolder.IconTreeItem(R.drawable.ic_folder, "Fotos");
-        TreeNode child = new TreeNode(childItem).setViewHolder(new MyHolder(getApplicationContext(), false, R.layout.child, 25));
-
-        //Sub Child
-        MyHolder.IconTreeItem subChildItem = new MyHolder.IconTreeItem(R.drawable.ic_folder, "Campamento");
-        TreeNode subChild = new TreeNode(subChildItem).setViewHolder(new MyHolder(getApplicationContext(), false, R.layout.child, 50));
-
-        //Add sub child.
-        child.addChild(subChild);
+    }
+     Uri uri;
+    @Override
+     public void onActivityResult(int requestCode, int resultCode, Intent data) {
+         super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode == RESULT_OK) {
 
 
-        //Add child.
-        parent.addChildren(child);
-        root.addChild(parent);
-        root.addChild(parent1);
 
-        //Add AndroidTreeView into view.
-        AndroidTreeView tView = new AndroidTreeView(getApplicationContext(), root);
-        ((LinearLayout) findViewById(R.id.ll_parent)).addView(tView.getView());*/
+          uri= data.getData();
+
+
+
+            File f = new File(uri.getPath());
+            String fileName= f.getPath();
+
+            String val="";
+            byte[] bytes= convertImageToByte(uri);
+
+
+            llam(et5.getText().toString(),fileName,bytes);
+            //String scheme = uri.getScheme();
+
+
+            //llamar(convertImageToByte(uri));
+        }
+
+
+    }
+    public void llam(String nombre, String fileName, byte[] str){
+        FeedTask1 feed = new FeedTask1();
+        feed.doInBackground("jose",fileName,str);
+        //new Perfil.FeedTask1().execute("jose", "fotos", str);
+    }
+
+
+
+
+
+    public byte[] convertImageToByte(Uri uri){
+        byte[] data = null;
+
+        try {
+            ContentResolver cr = getBaseContext().getContentResolver();
+            InputStream inputStream = cr.openInputStream(uri);
+            Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
+            data = baos.toByteArray();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        return data;
+    }
+
+    public void llamar(byte[] array){
+       /* Bitmap bmp = BitmapFactory.decodeByteArray(array, 0, array.length);
+        ImageView image = (ImageView) findViewById(R.id.imageView3);
+
+
+
+        image.setImageBitmap(Bitmap.createScaledBitmap(bmp, image.getWidth(),
+                image.getHeight(), false));*/
+       // image.setImageBitmap(bmp);
+    }
+
+    public class FeedTask3  {
+
+
+
+
+
+        String doInBackground(String user, String nombre) {
+            StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+            StrictMode.setThreadPolicy(policy);
+            try {
+                OkHttpClient client = new OkHttpClient();
+
+
+
+
+                RequestBody postData = new FormBody.Builder()
+                        .add("usuario", user)
+                        .add("carpeta", nombre)
+
+                        .build();
+
+                Request request = new Request.Builder()
+                        //.url("http://josecarlosing10.pythonanywhere.com/CrearCarpeta")
+                        .url("http://192.168.1.7:5000/EliminarCarpeta")
+                        .post(postData)
+                        .build();
+
+                Response response = client.newCall(request).execute();
+                String result = response.body().string();
+                if (result.equals("True")){
+                    AlertDialog.Builder builder = new AlertDialog.Builder(context)
+                            .setTitle("Listo")
+
+                            .setMessage("Se elimino con exito")
+                            .setPositiveButton("Ok", null);
+
+                    AlertDialog build = builder.create();
+                    build.show();
+                }
+
+                // et1.setText(result);
+                return result;
+
+            } catch (Exception e) {
+                String mensaje = e.toString();
+                AlertDialog.Builder builder = new AlertDialog.Builder(context)
+                        .setTitle("Bienvenido")
+
+                        .setMessage(mensaje)
+                        .setPositiveButton("Ok", null);
+
+                AlertDialog build = builder.create();
+                build.show();
+
+                return null;
+            }
+
+        }
+
+
+
+    }
+    public class FeedTask2  {
+
+
+
+
+
+        String doInBackground(String user, String nombre, String nuevo) {
+            StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+            StrictMode.setThreadPolicy(policy);
+            try {
+                OkHttpClient client = new OkHttpClient();
+
+
+
+
+                RequestBody postData = new FormBody.Builder()
+                        .add("usuario", user)
+                        .add("nombre", nombre)
+                        .add("nuevo", nuevo)
+                        .build();
+
+                Request request = new Request.Builder()
+                        //.url("http://josecarlosing10.pythonanywhere.com/CrearCarpeta")
+                        .url("http://192.168.1.7:5000/ModificarCarpeta")
+                        .post(postData)
+                        .build();
+
+                Response response = client.newCall(request).execute();
+                String result = response.body().string();
+                if (result.equals("True")){
+                    AlertDialog.Builder builder = new AlertDialog.Builder(context)
+                            .setTitle("Listo")
+
+                            .setMessage("Se modifico con exito")
+                            .setPositiveButton("Ok", null);
+
+                    AlertDialog build = builder.create();
+                    build.show();
+                }
+
+                // et1.setText(result);
+                return result;
+
+            } catch (Exception e) {
+                String mensaje = e.toString();
+                AlertDialog.Builder builder = new AlertDialog.Builder(context)
+                        .setTitle("Bienvenido")
+
+                        .setMessage(mensaje)
+                        .setPositiveButton("Ok", null);
+
+                AlertDialog build = builder.create();
+                build.show();
+
+                return null;
+            }
+
+        }
+
+
+
+    }
+
+
+    public class FeedTask1  {
+
+
+
+
+
+        String doInBackground(String user, String nombre, byte[] archivo) {
+            StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+            StrictMode.setThreadPolicy(policy);
+            try {
+                OkHttpClient client = new OkHttpClient();
+
+
+
+                String fotos = "none";
+                RequestBody postData = new FormBody.Builder()
+                        .add("usuario", user)
+                        .add("carpeta", fotos)
+                        .add("nombre", nombre)
+                        .add("archivo",archivo.toString())
+                        .build();
+
+                Request request = new Request.Builder()
+                        //.url("http://josecarlosing10.pythonanywhere.com/CrearCarpeta")
+                        .url("http://192.168.1.7:5000/CrearArchivo")
+                        .post(postData)
+                        .build();
+
+                Response response = client.newCall(request).execute();
+                String result = response.body().string();
+                // et1.setText(result);
+                return result;
+
+            } catch (Exception e) {
+                String mensaje = e.toString();
+                AlertDialog.Builder builder = new AlertDialog.Builder(context)
+                        .setTitle("Bienvenido")
+
+                        .setMessage(mensaje)
+                        .setPositiveButton("Ok", null);
+
+                AlertDialog build = builder.create();
+                build.show();
+
+                return null;
+            }
+
+        }
 
 
 

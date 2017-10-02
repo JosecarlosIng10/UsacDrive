@@ -12,7 +12,6 @@
         android:id="@+id/editText6"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="0.06"
         android:ems="10"
         android:inputType="textPersonName"
         android:text="Name" />
@@ -21,7 +20,6 @@
         android:id="@+id/editText5"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="0.06"
         android:ems="10"
         android:inputType="textPersonName"
         android:text="Name" />
@@ -33,12 +31,33 @@
         android:layout_weight="0.06"
         android:text="Crear Carpeta" />
 
+    <Button
+        android:id="@+id/button7"
+        android:layout_width="match_parent"
+        android:layout_height="33dp"
+        android:text="Modificar" />
+
+    <Button
+        android:id="@+id/button8"
+        android:layout_width="match_parent"
+        android:layout_height="33dp"
+        android:text="Eliminar" />
+
+    <Button
+        android:id="@+id/button6"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="0.06"
+        android:text="Subir Archivo" />
+
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="384dp"
         android:id="@+id/ll_parent1"
-        android:layout_weight="0.06"
-        android:orientation="vertical"></LinearLayout>
+        android:orientation="vertical"
+        android:weightSum="1">
+
+    </LinearLayout>
 
 
 </LinearLayout>

@@ -1,12 +1,269 @@
 import bisect
+#import random, math
 
+outputdebug = False 
+
+def debug(msg):
+    if outputdebug:
+        print msg
+
+class Node():
+    def __init__(self, key, nombre, archivo):
+        self.key = key
+        self.nombre= nombre
+        self.archivo= archivo
+        self.left = None 
+        self.right = None 
+
+
+
+
+class AVLTree():
+    def __init__(self, *args):
+        self.node = None 
+        self.height = -1  
+        self.balance = 0; 
+        
+        if len(args) == 1: 
+            for i in args[0]: 
+                self.insert(i)
+                
+    def height(self):
+        if self.node: 
+            return self.node.height 
+        else: 
+            return 0 
+    
+    def is_leaf(self):
+        return (self.height == 0) 
+    
+    def insert(self, key,nombre,archivo):
+        tree = self.node
+        
+        newnode = Node(key,nombre,archivo)
+        
+        if tree == None:
+            self.node = newnode 
+            self.node.left = AVLTree() 
+            self.node.right = AVLTree()
+            debug("Inserted key [" + str(key) + "]")
+        
+        elif key <= tree.key: 
+            self.node.left.insert(key,nombre,archivo)
+            
+        elif key >= tree.key: 
+            self.node.right.insert(key,nombre,archivo)
+        
+        else: 
+            debug("Key [" + str(newnode.key) + "] already in tree.")
+            
+        self.rebalance() 
+
+
+        
+    def rebalance(self):
+        ''' 
+        Rebalance a particular (sub)tree
+        ''' 
+        # key inserted. Let's check if we're balanced
+        self.update_heights(False)
+        self.update_balances(False)
+        while self.balance < -1 or self.balance > 1: 
+            if self.balance > 1:
+                if self.node.left.balance < 0:  
+                    self.node.left.lrotate() # we're in case II
+                    self.update_heights()
+                    self.update_balances()
+                self.rrotate()
+                self.update_heights()
+                self.update_balances()
+                
+            if self.balance < -1:
+                if self.node.right.balance > 0:  
+                    self.node.right.rrotate() # we're in case III
+                    self.update_heights()
+                    self.update_balances()
+                self.lrotate()
+                self.update_heights()
+                self.update_balances()
+
+
+            
+    def rrotate(self):
+        # Rotate left pivoting on self
+        debug ('Rotating ' + str(self.node.key) + ' right') 
+        A = self.node 
+        B = self.node.left.node 
+        T = B.right.node 
+        
+        self.node = B 
+        B.right.node = A 
+        A.left.node = T 
+
+    
+    def lrotate(self):
+        # Rotate left pivoting on self
+        debug ('Rotating ' + str(self.node.key) + ' left') 
+        A = self.node 
+        B = self.node.right.node 
+        T = B.left.node 
+        
+        self.node = B 
+        B.left.node = A 
+        A.right.node = T 
+        
+            
+    def update_heights(self, recurse=True):
+        if not self.node == None: 
+            if recurse: 
+                if self.node.left != None: 
+                    self.node.left.update_heights()
+                if self.node.right != None:
+                    self.node.right.update_heights()
+            
+            self.height = max(self.node.left.height,
+                              self.node.right.height) + 1 
+        else: 
+            self.height = -1 
+            
+    def update_balances(self, recurse=True):
+        if not self.node == None: 
+            if recurse: 
+                if self.node.left != None: 
+                    self.node.left.update_balances()
+                if self.node.right != None:
+                    self.node.right.update_balances()
+
+            self.balance = self.node.left.height - self.node.right.height 
+        else: 
+            self.balance = 0 
+
+    def delete(self, key):
+        # debug("Trying to delete at node: " + str(self.node.key))
+        if self.node != None: 
+            if self.node.key == key: 
+                debug("Deleting ... " + str(key))  
+                if self.node.left.node == None and self.node.right.node == None:
+                    self.node = None # leaves can be killed at will 
+                # if only one subtree, take that 
+                elif self.node.left.node == None: 
+                    self.node = self.node.right.node
+                elif self.node.right.node == None: 
+                    self.node = self.node.left.node
+                
+                # worst-case: both children present. Find logical successor
+                else:  
+                    replacement = self.logical_successor(self.node)
+                    if replacement != None: # sanity check 
+                        debug("Found replacement for " + str(key) + " -> " + str(replacement.key))  
+                        self.node.key = replacement.key 
+                        
+                        # replaced. Now delete the key from right child 
+                        self.node.right.delete(replacement.key)
+                    
+                self.rebalance()
+                return  
+            elif key < self.node.key: 
+                self.node.left.delete(key)  
+            elif key > self.node.key: 
+                self.node.right.delete(key)
+                        
+            self.rebalance()
+        else: 
+            return 
+
+    def logical_predecessor(self, node):
+        ''' 
+        Find the biggest valued node in LEFT child
+        ''' 
+        node = node.left.node 
+        if node != None: 
+            while node.right != None:
+                if node.right.node == None: 
+                    return node 
+                else: 
+                    node = node.right.node  
+        return node 
+    
+    def logical_successor(self, node):
+        ''' 
+        Find the smallese valued node in RIGHT child
+        ''' 
+        node = node.right.node  
+        if node != None: # just a sanity check  
+            
+            while node.left != None:
+                debug("LS: traversing: " + str(node.key))
+                if node.left.node == None: 
+                    return node 
+                else: 
+                    node = node.left.node  
+        return node 
+
+    def check_balanced(self):
+        if self == None or self.node == None: 
+            return True
+        
+        # We always need to make sure we are balanced 
+        self.update_heights()
+        self.update_balances()
+        return ((abs(self.balance) < 2) and self.node.left.check_balanced() and self.node.right.check_balanced())  
+        
+    def inorder_traverse(self):
+        if self.node == None:
+            return [] 
+        
+        inlist = [] 
+        l = self.node.left.inorder_traverse()
+        for i in l: 
+            inlist.append(i) 
+
+        inlist.append(self.node.key)
+
+        l = self.node.right.inorder_traverse()
+        for i in l: 
+            inlist.append(i) 
+    
+        return inlist 
+
+    def display(self, level, pref,archivo):
+        '''
+        Display the whole tree. Uses recursive def.
+        TODO: create a better display using breadth-first search
+        '''
+             
+        self.update_heights()  # Must update heights before balances 
+        self.update_balances()
+        if(self.node != None): 
+            padre=  self.node.nombre 
+            if pref != '':
+                archivo.writelines(str(pref)+ str(self.node.nombre)+";") 
+            #print pref, str(self.node.key) + ";"    
+            if self.node.left != None: 
+                self.node.left.display(level + 1, str(padre)+"->",archivo)
+            if self.node.left != None:
+                self.node.right.display(level + 1, str(padre)+"->",archivo)
+
+            
+    
+
+    def dibujarAvl(self):
+        archivo=open('avl.dot', 'w')
+        archivo.write('digraph G{\n')
+        archivo.write("node [fontname=\"Arial\"];\n");
+        #archivo.write("rankdir = TD;\n");
+        self.display(0,'', archivo)
+        archivo.write('}')
+        archivo.close()            
+           
+        
 
               
 class NodoB(object):
     def __init__(self, idNombre=None, nombreCarpeta=None, direccion=None, arbol= None):
         self.idNombre = idNombre
         self.nombreCarpeta = nombreCarpeta
-        #self.nodoAVL = ArbolAVL()
+        self.nodoAVL = AVLTree()
         #self.arbol = ArbolB()
         self.direccion = direccion
         self.arbol= arbol
@@ -24,6 +281,7 @@ class ArbolB(object):
         self.inicio = Pagina()
         self.inicio2 = Pagina()
         self.inserta = NodoB()
+        #self.nodoAVL=AVLTree()
         self.enlace = Pagina()
         self.pivote = False
         self.existe = False
@@ -37,8 +295,12 @@ class ArbolB(object):
     def crearNodoInsertar(self, idNombre, nombreCarpeta, direccion,arbol):
         nodob = NodoB(idNombre, nombreCarpeta, direccion,arbol)
         self.InsertarArbolB(nodob, self.inicio)
+    def avlre(self):
+        nodo = self.inserta
+
+        return nodo.nodoAVL
         
-    
+   
     #Inserta el nodo al Arbol B La clave es el Nodo y la raiz la Pagina
     def InsertarArbolB(self, clave, raiz):
         self.agregar(clave, raiz)
@@ -200,6 +462,94 @@ class ArbolB(object):
                             return b
                             j+=1        
                     k+=1
+
+    def modificarcarpeta(self,nombre,nuevo):
+        return self.modificararbolcarpeta(self.inicio,nombre,nuevo) 
+    def modificararbolcarpeta(self,raiz,cad,nuevo):
+        nodo = raiz
+        
+        if (nodo==None):
+           
+            return None
+        else :
+            if (nodo.cuentas != 0):
+                
+            
+                k=1
+                j=0
+                while k <= nodo.cuentas:
+                    if nodo.claves[k-1].nombreCarpeta == cad:
+                        nodo.claves[k-1].nombreCarpeta = nuevo
+                    else:
+                        b = nodo.claves[k-1].arbol.modificarcarpeta(cad,nuevo)
+                        if b!= None:
+                            return b
+                    if k== nodo.cuentas:
+                        while str(self.modificararbolcarpeta(nodo.ramas[j],cad,nuevo)) != "None":
+                            b = self.modificararbolcarpeta(nodo.ramas[j],cad,nuevo)
+                            return b
+                            j+=1        
+                    k+=1                
+    
+
+
+
+    def eliminar(self,nombre,b):
+        return self.eliminarcarpeta(self.inicio,nombre, b) 
+    def eliminarcarpeta(self,raiz,cad,b):
+        nodo = raiz
+        
+        if (nodo==None):
+           
+            return None
+        else :
+            if (nodo.cuentas != 0):
+                
+            
+                k=1
+                j=0
+                while k <= nodo.cuentas:
+                    if nodo.claves[k-1].nombreCarpeta == cad:
+                        
+                       hola="hola"
+                    else:
+                        b.InsertarArbolB(nodo.claves[k-1],self.inicio)
+                        nodo.claves[k-1].arbol.eliminar(cad,b)
+                        
+                    if k== nodo.cuentas:
+                        while str(self.eliminarcarpeta(nodo.ramas[j],cad,b)) != "None":
+                            b = self.eliminarcarpeta(nodo.ramas[j],cad,b)
+                            
+                            j+=1        
+                    k+=1
+                return b          
+    def buscaravl(self,nombre):
+        return self.buscarnodoavl(self.inicio,nombre) 
+    def buscarnodoavl(self,raiz,cad):
+        nodo = raiz
+        
+        if (nodo==None):
+           
+            return None
+        else :
+            if (nodo.cuentas != 0):
+                
+            
+                k=1
+                j=0
+                while k <= nodo.cuentas:
+                    if nodo.claves[k-1].nombreCarpeta == cad:
+                        return nodo.claves[k-1].nodoAVL
+                    else:
+                        b = nodo.claves[k-1].arbol.buscaravl(cad)
+                        if b!= None:
+                            return b
+                    if k== nodo.cuentas:
+                        while str(self.buscarnodoavl(nodo.ramas[j],cad)) != "None":
+                            b = self.buscarnodoavl(nodo.ramas[j],cad)
+                            return b
+                            j+=1        
+                    k+=1            
                 
                 """j=0
                 while j <= nodo.cuentas:
@@ -416,6 +766,14 @@ class ListaCircularDobleEnlazada:
             aux = aux.siguiente  
             if  aux == self.primero:
                 return "false"
+    def cambiarArbolb(self, nombre = None,b=None):
+        aux = self.primero
+        while aux != None:
+            if aux.usuario == nombre:
+                aux.raizB = b          
+            aux = aux.siguiente  
+            if  aux == self.primero:
+                return "false"            
 
 
 
@@ -453,20 +811,43 @@ def h2():
     verificar =ListaUsuarios.buscar(usuario,contra)
     print (verificar)
     return verificar
+@app.route('/ModificarCarpeta', methods = ['POST'])
+def h22(): 
+    usuario = request.form['usuario']
+    nombre = request.form['nombre']
+    nuevo = request.form['nuevo']
+    raizB = ListaUsuarios.obtenerArbolB(usuario)
+    raizB.modificarcarpeta(nombre,nuevo)
+    raizB.dibujarArbol()
+
+    return "True"
+@app.route('/EliminarCarpeta', methods = ['POST'])
+def h23():
+     a = ArbolB()   
+     usuario = request.form['usuario']
+     carpeta= request.form['carpeta']
+     raizB = ListaUsuarios.obtenerArbolB(usuario)
+     b= raizB.eliminar(carpeta,a)
+
+     ListaUsuarios.cambiarArbolb(usuario,b)
+     raizB.dibujarArbol()
+
+     return "True"
+
+
+
+
 @app.route('/CrearCarpeta', methods = ['POST'])
 def h3():
     
     a= ArbolB()
+    c = AVLTree()
     usuario = request.form['usuario']
     nombre = request.form['nombre']
     padre = request.form['padre']
     raizB = ListaUsuarios.obtenerArbolB(usuario)
 
     b = raizB.buscarcarpeta(padre)
-
-    
-
-
 
     abd="abcdefghijklmnopqrstuvwxyz"
     primera=nombre[0]
@@ -489,7 +870,48 @@ def h3():
     cadena += raizB.verarbol()
     
     return cadena
+@app.route('/CrearArchivo', methods = ['POST'])
+def h6():
+    usuario= request.form['usuario']
+    nombrecarpeta= request.form['carpeta']
+    nombrearchivo = request.form['nombre']
+    archivo = request.form['archivo']
+    raizB = ListaUsuarios.obtenerArbolB(usuario)
+
+    b = raizB.buscaravl(nombrecarpeta)
+   
+        
+    abd="abcdefghijklmnopqrstuvwxyz"
+    primera=nombrearchivo[0]
+    i=0
+    if primera.isdigit() == True:
+        i= primera
+    else:    
+        for letra in abd:
+            if letra==primera:
+                break
+            else:
+                i=i+1
+
+    if b==None:
+        raizB.avlre().insert(nombrearchivo,nombrearchivo,archivo)
+       
+     
+
+        raizB.avlre().dibujarAvl()
+    else:
+        b.insert(nombrearchivo,nombrearchivo,archivo) 
+       
+        b.dibujarAvl()  
+    
+
+    return "Listo"
+
 
 if __name__ == "__main__":
-  ListaUsuarios.agregar_final("jose","1")    
-  app.run(debug=True, host='192.168.1.7')
+ """b = AVLTree()
+ b.insert(0,"hola","archivo")
+ b.insert(0,"jus","archivo")
+ b.dibujarAvl()"""
+ ListaUsuarios.agregar_final("jose","1")    
+ app.run(debug=True, host='192.168.1.7')
